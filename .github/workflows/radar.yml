@@ -8,6 +8,7 @@ on:
 jobs:
   radar:
     runs-on: ubuntu-latest
+    timeout-minutes: 25  # se travar, o GitHub para a execução sozinho
     steps:
       - uses: actions/checkout@v5
 

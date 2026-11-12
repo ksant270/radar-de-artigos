@@ -32,7 +32,9 @@ nota_destaque <- 4  # a partir dessa nota, o artigo aparece com resumo
 # indisponível, o radar tenta o próximo da lista.
 modelos <- c("gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.7-flash",
              "gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite")
-options(ellmer_timeout_s = 90)  # se um modelo não responder em 90 segundos, passa pro próximo
+# Se um modelo não responder em 90 segundos, passa pro próximo. Uma tentativa só
+# por modelo: quem cuida de tentar de novo é a lista de modelos, não o ellmer.
+options(ellmer_timeout_s = 90, ellmer_max_tries = 1)
 modelos_usados <- character(0)
 modelos_com_falha <- character(0)  # quem falhou uma vez é pulado nos próximos temas
 
