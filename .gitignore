@@ -1,0 +1,8 @@
+# Nunca sobem pro GitHub
+chave_api.txt
+.Renviron
+.Rhistory
+.RData
+.Rproj.user/
+.DS_Store
+saidas/
