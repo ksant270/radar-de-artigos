@@ -26,6 +26,15 @@ temas <- list(
     '("lung adenocarcinoma"[Title/Abstract] OR LUAD[Title/Abstract])',
     'AND ("lung squamous cell carcinoma"[Title/Abstract] OR "squamous cell lung cancer"[Title/Abstract]',
     'OR "squamous cell carcinoma of the lung"[Title/Abstract] OR LUSC[Title/Abstract])'
+  ),
+  "Microbioma pulmonar" = paste(
+    '(("lung neoplasms"[MeSH Terms] OR "lung cancer"[Title/Abstract]',
+    'OR "lung adenocarcinoma"[Title/Abstract] OR NSCLC[Title/Abstract])',
+    'AND (microbiome[Title/Abstract] OR microbiota[Title/Abstract]',
+    'OR "Microbiota"[MeSH Terms] OR dysbiosis[Title/Abstract]))',
+    'OR ("lung microbiome"[Title/Abstract] OR "lung microbiota"[Title/Abstract]',
+    'OR "pulmonary microbiome"[Title/Abstract] OR "respiratory microbiome"[Title/Abstract]',
+    'OR "airway microbiome"[Title/Abstract])'
   )
 )
 
@@ -42,5 +51,9 @@ interesses_por_tema <- list(
   "LUAD vs LUSC" = paste(
     "as diferenças moleculares entre o adenocarcinoma de pulmão (LUAD)",
     "e o carcinoma de células escamosas de pulmão (LUSC)"
+  ),
+  "Microbioma pulmonar" = paste(
+    "o microbioma pulmonar e como o microbioma, do pulmão ou do intestino,",
+    "influencia o câncer de pulmão"
   )
 )
