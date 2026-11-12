@@ -10,7 +10,7 @@
 
 # 1. Configuração --------------------------------------------------------------
 
-pacotes <- c("rentrez", "xml2", "httr2", "jsonlite", "curl", "commonmark")
+pacotes <- c("rentrez", "xml2", "httr2", "jsonlite", "commonmark")
 faltando <- setdiff(pacotes, rownames(installed.packages()))
 if (length(faltando) > 0) install.packages(faltando)
 
@@ -28,8 +28,9 @@ nota_destaque <- 4  # a partir dessa nota, o artigo aparece com resumo
 modelos <- c("gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.7-flash",
              "gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite")
 espera_modelo <- 90  # segundos que cada modelo tem pra responder
-modelos_usados <- character(0)
-modelos_com_falha <- character(0)  # quem falhou uma vez é pulado nos próximos temas
+modelos_usados <- character(0)     # quem funcionou é o primeiro a ser chamado no tema seguinte
+modelos_com_falha <- character(0)  # quem falhou vai pro fim da fila
+modelos_sem_cota <- character(0)   # quem estourou a cota do dia fica de fora até o fim
 
 # Se a IA não responder dentro desse tempo, o resumo sai mesmo assim, só com
 # títulos e links nos temas que ficaram sem resumo.
@@ -177,6 +178,15 @@ tempo_esgotado <- function() {
   as.numeric(difftime(Sys.time(), inicio, units = "mins")) > limite_ia_minutos
 }
 
+# Traduz os erros mais comuns do Google numa frase curta pro log
+explicar_erro <- function(erro) {
+  if (grepl("per day|PerDay", erro, ignore.case = TRUE)) return("cota do dia do plano gratuito esgotada (429)")
+  if (grepl("HTTP 429", erro)) return("limite de pedidos por minuto (429)")
+  if (grepl("HTTP 503", erro)) return("modelo sobrecarregado (503)")
+  if (grepl("Timeout was reached", erro)) return(paste0("não respondeu em ", espera_modelo, " segundos"))
+  substr(erro, 1, 200)
+}
+
 # Manda todos os artigos de um tema numa chamada só (gasta menos do limite
 # gratuito) e devolve uma tabela com resumo, nota e motivo de cada PMID.
 # Se nenhum modelo responder, devolve NULL e o tema sai só com títulos e links.
@@ -193,16 +203,21 @@ resumir <- function(tema, artigos) {
   esperas <- c(60, 180)  # segundos de espera antes da 2ª e da 3ª rodada
 
   for (rodada in 1:3) {
-    candidatos <- if (rodada == 1) setdiff(modelos, modelos_com_falha) else modelos
-    if (length(candidatos) == 0) candidatos <- modelos
-    for (modelo in candidatos) {
+    # Quem já funcionou vai primeiro e quem falhou vai pro fim da fila. Quem
+    # estourou a cota do dia fica de fora, porque só volta no dia seguinte.
+    fila <- unique(c(rev(modelos_usados), setdiff(modelos, modelos_com_falha), modelos_com_falha))
+    fila <- setdiff(fila, modelos_sem_cota)
+    for (modelo in fila) {
       if (tempo_esgotado()) break
       resposta <- tryCatch(perguntar_gemini(modelo, montar_instrucoes(tema), pedido),
         error = function(e) {
           erro <- gsub("\\s+", " ", conditionMessage(e))
-          message("  ", modelo, " não respondeu: ", erro)
+          message("  ", modelo, " não respondeu: ", explicar_erro(erro))
           modelos_com_falha <<- unique(c(modelos_com_falha, modelo))
-          ultimo_erro_ia <<- paste0(modelo, ": ", erro)
+          ultimo_erro_ia <<- paste0(modelo, ": ", explicar_erro(erro))
+          if (grepl("per day|PerDay", erro, ignore.case = TRUE)) {
+            modelos_sem_cota <<- unique(c(modelos_sem_cota, modelo))
+          }
           # Chave errada não melhora tentando outro modelo
           if (grepl("API key|API_KEY", erro, ignore.case = TRUE)) chave_recusada <<- TRUE
           NULL
@@ -215,7 +230,8 @@ resumir <- function(tema, artigos) {
         return(resposta[!duplicated(resposta$pmid), ])
       }
     }
-    if (rodada == 3 || tempo_esgotado() || chave_recusada) break
+    sem_cota_em_todos <- all(modelos %in% modelos_sem_cota)
+    if (rodada == 3 || tempo_esgotado() || chave_recusada || sem_cota_em_todos) break
     message("Nenhum modelo respondeu. Tentando de novo em ", esperas[rodada], " segundos...")
     Sys.sleep(esperas[rodada])
   }
@@ -364,6 +380,9 @@ if (interactive()) browseURL(normalizePath(arquivo))
 
 b64 <- function(x) jsonlite::base64_enc(charToRaw(enc2utf8(x)))
 
+# Quem envia é o programa curl (o mesmo que vem no Mac, no Linux e no Windows),
+# num processo separado. No GitHub, enviar de dentro do R derrubava a execução
+# inteira; assim, se o envio falhar, o R continua e avisa o que aconteceu.
 enviar_email <- function(para, assunto, html) {
   mensagem <- paste0(
     "From: Radar de artigos <", Sys.getenv("GMAIL_USUARIO"), ">\r\n",
@@ -374,13 +393,26 @@ enviar_email <- function(para, assunto, html) {
     "Content-Transfer-Encoding: base64\r\n\r\n",
     gsub("(.{76})", "\\1\r\n", b64(html)), "\r\n"
   )
-  curl::send_mail(
-    mail_from = Sys.getenv("GMAIL_USUARIO"), mail_rcpt = para, message = mensagem,
-    smtp_server = Sys.getenv("SMTP_SERVIDOR", "smtps://smtp.gmail.com:465"),
-    username = Sys.getenv("GMAIL_USUARIO"),
-    password = gsub("\\s", "", Sys.getenv("GMAIL_SENHA_APP")),  # o Google mostra a senha com espaços
-    verbose = FALSE
-  )
+  servidor <- Sys.getenv("SMTP_SERVIDOR", "smtps://smtp.gmail.com:465")
+  arquivo <- tempfile(fileext = ".eml")
+  credenciais <- tempfile()
+  on.exit(unlink(c(arquivo, credenciais)))
+  writeBin(charToRaw(mensagem), arquivo)
+  # A senha vai num arquivo temporário só seu, e não na linha de comando
+  writeLines(paste("machine", sub("^smtps?://([^:/]+).*$", "\\1", servidor),
+                   "login", Sys.getenv("GMAIL_USUARIO"),
+                   "password", gsub("\\s", "", Sys.getenv("GMAIL_SENHA_APP"))),  # o Google mostra a senha com espaços
+             credenciais)
+  Sys.chmod(credenciais, "0600")
+  saida <- suppressWarnings(system2("curl", shQuote(c(
+    "--silent", "--show-error", "--ssl-reqd", "--max-time", "60",
+    "--url", servidor, "--netrc-file", credenciais,
+    "--mail-from", Sys.getenv("GMAIL_USUARIO"), "--mail-rcpt", para, "--upload-file", arquivo
+  )), stdout = TRUE, stderr = TRUE))
+  status <- attr(saida, "status")
+  if (!is.null(status) && status != 0) {
+    stop(paste(c(saida, paste0("(código ", status, ")")), collapse = " "))
+  }
 }
 
 ler_assinantes <- function(texto) {

@@ -108,6 +108,6 @@ O resumo é salvo em `saidas/` e abre no navegador. Sem as linhas do Gmail, ele 
 
 ## Como foi construído
 
-Em R: rentrez e xml2 pro PubMed, httr2 pra chamar a API do Gemini direto, commonmark pro HTML e curl pro e-mail, com GitHub Actions pra agendar a execução. Desenvolvido com ajuda do Claude como copiloto de código.
+Em R: rentrez e xml2 pro PubMed, httr2 pra chamar a API do Gemini direto, commonmark pro HTML e o programa curl pro e-mail, com GitHub Actions pra agendar a execução. Desenvolvido com ajuda do Claude como copiloto de código.
 
 Kauê Sant'Ana · Biotecnologia, UFPA

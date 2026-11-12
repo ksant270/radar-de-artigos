@@ -21,7 +21,7 @@ jobs:
           use-public-rspm: true
 
       - name: Instalar pacotes
-        run: Rscript -e 'install.packages(c("rentrez", "xml2", "httr2", "jsonlite", "curl", "commonmark"))'
+        run: Rscript -e 'install.packages(c("rentrez", "xml2", "httr2", "jsonlite", "commonmark"))'
 
       - name: Rodar o radar
         env:
