@@ -7,7 +7,9 @@ on:
 
 jobs:
   radar:
-    runs-on: ubuntu-latest
+    # Versão fixa do Ubuntu: o "ubuntu-latest" está migrando pro Ubuntu 26,
+    # e uma versão fixa evita surpresas com bibliotecas novas.
+    runs-on: ubuntu-24.04
     timeout-minutes: 25  # se travar, o GitHub para a execução sozinho
     env:
       LANG: C.UTF-8      # pra os acentos saírem certos
@@ -28,4 +30,19 @@ jobs:
           GMAIL_SENHA_APP: ${{ secrets.GMAIL_SENHA_APP }}
           ASSINANTES: ${{ secrets.ASSINANTES }}
           NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}  # opcional
-        run: Rscript radar.R
+        run: |
+          set -o pipefail
+          Rscript radar.R 2>&1 | tee radar.log
+
+      # Copia o fim da saída do R pra página da execução, que qualquer um vê
+      # sem login (o log completo só aparece pra quem está logado). Endereços
+      # de e-mail viram <e-mail>.
+      - name: Mostrar a saída na página da execução
+        if: always()
+        run: |
+          {
+            echo '### Saída do radar'
+            echo '```'
+            tail -n 80 radar.log 2>/dev/null | sed -E 's/[[:alnum:]._%+-]+@[[:alnum:].-]+/<e-mail>/g'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

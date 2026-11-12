@@ -29,7 +29,7 @@ O GitHub Actions roda tudo sozinho toda segunda às 8h, horário de Belém.
 - **Se um modelo cair, passa pro próximo.** Há uma lista de modelos em ordem de preferência, e quem falha é pulado no resto da execução.
 - **Se a IA cair de vez, o resumo sai mesmo assim.** Depois de três rodadas de tentativas (ou 12 minutos), os temas que faltam vão só com títulos e links, com um aviso no e-mail.
 - **O PubMed também falha às vezes.** Cada busca tem pausa e até quatro tentativas, e um tema que não responder não derruba os outros.
-- **Avisos sem precisar abrir o log.** No GitHub, o radar escreve na página da execução quantos e-mails saíram e o que falhou. A execução só fica vermelha quando algo precisa de conserto: nenhum e-mail enviado, chave do Gemini recusada ou PubMed fora do ar.
+- **Avisos sem precisar abrir o log.** No GitHub, o radar escreve na página da execução quantos e-mails saíram, o que falhou e o fim da saída do R. A execução só fica vermelha quando algo precisa de conserto: nenhum e-mail enviado, chave do Gemini recusada ou PubMed fora do ar.
 - **Destaque só pro que importa.** Artigos com nota 4 ou 5 aparecem com resumo; o resto vira uma lista de títulos.
 - **Privacidade.** Chave, senha e lista de e-mails ficam nos secrets do GitHub, e o log mostra só quantos e-mails foram enviados, nunca os endereços.
 
