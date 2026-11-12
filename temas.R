@@ -21,6 +21,11 @@ temas <- list(
     cancer_gastrico,
     'AND ("tumor microenvironment"[Title/Abstract] OR "tumour microenvironment"[Title/Abstract]',
     'OR "immune infiltration"[Title/Abstract] OR "tumor-infiltrating"[Title/Abstract])'
+  ),
+  "LUAD vs LUSC" = paste(
+    '("lung adenocarcinoma"[Title/Abstract] OR LUAD[Title/Abstract])',
+    'AND ("lung squamous cell carcinoma"[Title/Abstract] OR "squamous cell lung cancer"[Title/Abstract]',
+    'OR "squamous cell carcinoma of the lung"[Title/Abstract] OR LUSC[Title/Abstract])'
   )
 )
 
@@ -29,4 +34,13 @@ interesses_do_grupo <- paste(
   "câncer gástrico, com foco em assinaturas de lncRNA, fatores de transcrição,",
   "microambiente imune do tumor e metaloproteinases de matriz,",
   "em pacientes da região Norte do Brasil"
+)
+
+# Opcional: um perfil próprio pra temas que fogem do perfil do grupo.
+# Quem não estiver aqui usa o interesses_do_grupo.
+interesses_por_tema <- list(
+  "LUAD vs LUSC" = paste(
+    "as diferenças moleculares entre o adenocarcinoma de pulmão (LUAD)",
+    "e o carcinoma de células escamosas de pulmão (LUSC)"
+  )
 )

@@ -65,6 +65,8 @@ Teste a busca antes em [pubmed.ncbi.nlm.nih.gov](https://pubmed.ncbi.nlm.nih.gov
 
 **Perfil do grupo** (`interesses_do_grupo`, no fim do `temas.R`): uma frase sobre o que o grupo estuda. A IA usa essa frase pra dar a nota de relevância.
 
+**Perfil por tema** (`interesses_por_tema`, opcional): pra um tema que foge do perfil do grupo, escreva uma frase só dele. Sem isso, um tema sobre pulmão, por exemplo, seria avaliado com o olhar de quem estuda estômago e quase tudo ganharia nota baixa.
+
 **Assinantes** (secret `ASSINANTES`): separe as pessoas com ponto e vírgula e use os nomes dos temas como estão no `temas.R`. Quem não escolher tema, ou escrever `todos`, recebe todos.
 
 ```
@@ -96,7 +98,7 @@ O resumo é salvo em `saidas/` e abre no navegador. Sem as linhas do Gmail, ele 
 ## Limitações
 
 - Os resumos são feitos por IA a partir do abstract e podem ter erros: confira sempre o artigo original.
-- A nota de relevância segue o perfil do grupo, e não o de cada pessoa.
+- A nota de relevância segue o perfil do tema (ou do grupo, quando o tema não tem perfil próprio), e não o de cada pessoa.
 - No plano gratuito, os modelos do Gemini às vezes ficam sobrecarregados; por isso existe a lista de modelos reserva.
 - O GitHub pausa as execuções agendadas de repositórios públicos depois de 60 dias sem nenhuma alteração. Se isso acontecer, é só reativar na aba Actions.
 

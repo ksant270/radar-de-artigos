@@ -30,7 +30,7 @@ nota_destaque <- 4  # a partir dessa nota, o artigo aparece com resumo
 
 # Modelos do Gemini em ordem de preferência. Se um estiver sobrecarregado ou
 # indisponível, o radar tenta o próximo da lista.
-modelos <- c("gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash",
+modelos <- c("gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.7-flash",
              "gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite")
 options(ellmer_timeout_s = 90)  # se um modelo não responder em 90 segundos, passa pro próximo
 modelos_usados <- character(0)
@@ -72,16 +72,24 @@ buscar_pubmed <- function(consulta) {
 
 # 3. Resumo com IA -------------------------------------------------------------
 
-instrucoes <- paste(
-  "Você ajuda um grupo de pesquisa a acompanhar a literatura científica.",
-  paste0("O grupo estuda ", interesses_do_grupo, "."),
-  "Para cada artigo recebido: resuma em português, em no máximo 2 frases,",
-  "o que o estudo fez e o principal achado; dê uma nota de relevância de 1 a 5",
-  "para o grupo (5 = muito relevante); e explique a nota em uma frase curta.",
-  "Use apenas o título e o abstract fornecidos: não invente resultados, números",
-  "ou métodos que não estejam no texto. Se o abstract estiver vazio, escreva",
-  "'Sem abstract disponível.' e dê nota 1."
-)
+if (!exists("interesses_por_tema")) interesses_por_tema <- list()
+
+# Cada tema pode ter o próprio perfil de interesse (interesses_por_tema, em
+# temas.R). Se não tiver, vale o perfil geral do grupo.
+montar_instrucoes <- function(tema) {
+  interesse <- interesses_por_tema[[tema]]
+  if (is.null(interesse)) interesse <- interesses_do_grupo
+  paste(
+    "Você ajuda pesquisadores a acompanhar a literatura científica.",
+    paste0("Quem vai ler estuda ", interesse, "."),
+    "Para cada artigo recebido: resuma em português, em no máximo 2 frases,",
+    "o que o estudo fez e o principal achado; dê uma nota de relevância de 1 a 5",
+    "para quem vai ler (5 = muito relevante); e explique a nota em uma frase curta.",
+    "Use apenas o título e o abstract fornecidos: não invente resultados, números",
+    "ou métodos que não estejam no texto. Se o abstract estiver vazio, escreva",
+    "'Sem abstract disponível.' e dê nota 1."
+  )
+}
 
 formato <- type_array(
   items = type_object(
@@ -108,7 +116,8 @@ resumir <- function(tema, artigos) {
     if (length(candidatos) == 0) candidatos <- modelos
     for (modelo in candidatos) {
       resposta <- tryCatch({
-        chat <- chat_google_gemini(system_prompt = instrucoes, model = modelo, echo = "none",
+        chat <- chat_google_gemini(system_prompt = montar_instrucoes(tema), model = modelo,
+                                   echo = "none",
                                    params = params(temperature = 0.2, max_tokens = 16384))
         chat$chat_structured(pedido, type = formato)
       }, error = function(e) {
@@ -245,7 +254,8 @@ enviar_email <- function(para, assunto, html) {
   curl::send_mail(
     mail_from = Sys.getenv("GMAIL_USUARIO"), mail_rcpt = para, message = mensagem,
     smtp_server = Sys.getenv("SMTP_SERVIDOR", "smtps://smtp.gmail.com:465"),
-    username = Sys.getenv("GMAIL_USUARIO"), password = Sys.getenv("GMAIL_SENHA_APP"),
+    username = Sys.getenv("GMAIL_USUARIO"),
+    password = gsub("\\s", "", Sys.getenv("GMAIL_SENHA_APP")),  # o Google mostra a senha com espaços
     verbose = FALSE
   )
 }
@@ -278,6 +288,9 @@ if (length(assinantes) == 0 || !nzchar(Sys.getenv("GMAIL_SENHA_APP"))) {
       TRUE
     }, error = function(e) {
       message("Um e-mail falhou: ", conditionMessage(e))
+      if (grepl("login|535|auth", conditionMessage(e), ignore.case = TRUE)) {
+        message("O Gmail recusou o login: confira o GMAIL_USUARIO e a senha de app.")
+      }
       FALSE
     })
     enviados <- enviados + ok
