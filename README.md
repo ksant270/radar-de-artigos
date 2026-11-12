@@ -24,9 +24,12 @@ O GitHub Actions roda tudo sozinho toda segunda às 8h, horário de Belém.
 ## Decisões de projeto
 
 - **A IA só lê e julga; quem busca é o PubMed.** Os artigos e os links vêm direto da base, e a IA só pode usar o título e o abstract que recebeu.
-- **Resposta em formato fixo.** O Gemini devolve uma tabela (PMID, resumo, nota, motivo) em vez de texto livre, então o código consegue ordenar e filtrar.
+- **Resposta em formato fixo.** O pedido ao Gemini leva um esquema JSON (PMID, resumo, nota, motivo), e o modelo é obrigado a responder nele, em vez de texto livre. Assim o código consegue ordenar e filtrar.
 - **Uma chamada por tema, e não por artigo**, pra caber no limite do plano gratuito.
 - **Se um modelo cair, passa pro próximo.** Há uma lista de modelos em ordem de preferência, e quem falha é pulado no resto da execução.
+- **Se a IA cair de vez, o resumo sai mesmo assim.** Depois de três rodadas de tentativas (ou 12 minutos), os temas que faltam vão só com títulos e links, com um aviso no e-mail.
+- **O PubMed também falha às vezes.** Cada busca tem pausa e até quatro tentativas, e um tema que não responder não derruba os outros.
+- **Avisos sem precisar abrir o log.** No GitHub, o radar escreve na página da execução quantos e-mails saíram e o que falhou. A execução só fica vermelha quando algo precisa de conserto: nenhum e-mail enviado, chave do Gemini recusada ou PubMed fora do ar.
 - **Destaque só pro que importa.** Artigos com nota 4 ou 5 aparecem com resumo; o resto vira uma lista de títulos.
 - **Privacidade.** Chave, senha e lista de e-mails ficam nos secrets do GitHub, e o log mostra só quantos e-mails foram enviados, nunca os endereços.
 
@@ -47,6 +50,7 @@ Se você é do NPO/UFPA, manda pro Kauê o seu e-mail e os temas que te interess
    | `GMAIL_USUARIO` | o Gmail que vai enviar os resumos |
    | `GMAIL_SENHA_APP` | a senha de app, sem espaços |
    | `ASSINANTES` | quem recebe e quais temas (formato abaixo) |
+   | `NCBI_API_KEY` | opcional: [chave gratuita do NCBI](https://www.ncbi.nlm.nih.gov/account/settings/), que aumenta o limite de buscas no PubMed |
 
 5. Em **Actions → Radar de artigos → Run workflow**, rode uma vez pra testar. Depois ele roda sozinho toda segunda.
 
@@ -73,7 +77,7 @@ Teste a busca antes em [pubmed.ncbi.nlm.nih.gov](https://pubmed.ncbi.nlm.nih.gov
 ana@gmail.com: lncRNA, Microambiente imune; joao@gmail.com: todos
 ```
 
-**Ajustes finos:** no começo do `radar.R` ficam `dias` (janela de busca), `max_por_tema`, `nota_destaque` e a lista de `modelos`. O dia e a hora do envio ficam na linha do `cron`, em `.github/workflows/radar.yml` (em UTC).
+**Ajustes finos:** no começo do `radar.R` ficam `dias` (janela de busca), `max_por_tema`, `nota_destaque`, a lista de `modelos` e quanto tempo a IA tem pra responder (`espera_modelo` e `limite_ia_minutos`). O dia e a hora do envio ficam na linha do `cron`, em `.github/workflows/radar.yml` (em UTC).
 
 ## Rodar no seu computador
 
@@ -99,11 +103,11 @@ O resumo é salvo em `saidas/` e abre no navegador. Sem as linhas do Gmail, ele 
 
 - Os resumos são feitos por IA a partir do abstract e podem ter erros: confira sempre o artigo original.
 - A nota de relevância segue o perfil do tema (ou do grupo, quando o tema não tem perfil próprio), e não o de cada pessoa.
-- No plano gratuito, os modelos do Gemini às vezes ficam sobrecarregados; por isso existe a lista de modelos reserva.
+- No plano gratuito, os modelos do Gemini às vezes ficam sobrecarregados. Por isso existe a lista de modelos reserva, e numa semana em que todos falharem o resumo chega só com títulos e links.
 - O GitHub pausa as execuções agendadas de repositórios públicos depois de 60 dias sem nenhuma alteração. Se isso acontecer, é só reativar na aba Actions.
 
 ## Como foi construído
 
-Em R (rentrez, xml2, ellmer e commonmark), com GitHub Actions pra agendar a execução. Desenvolvido com ajuda do Claude como copiloto de código.
+Em R: rentrez e xml2 pro PubMed, httr2 pra chamar a API do Gemini direto, commonmark pro HTML e curl pro e-mail, com GitHub Actions pra agendar a execução. Desenvolvido com ajuda do Claude como copiloto de código.
 
 Kauê Sant'Ana · Biotecnologia, UFPA

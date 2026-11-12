@@ -9,6 +9,8 @@ jobs:
   radar:
     runs-on: ubuntu-latest
     timeout-minutes: 25  # se travar, o GitHub para a execução sozinho
+    env:
+      LANG: C.UTF-8      # pra os acentos saírem certos
     steps:
       - uses: actions/checkout@v5
 
@@ -17,7 +19,7 @@ jobs:
           use-public-rspm: true
 
       - name: Instalar pacotes
-        run: Rscript -e 'install.packages(c("rentrez", "xml2", "ellmer", "commonmark"))'
+        run: Rscript -e 'install.packages(c("rentrez", "xml2", "httr2", "jsonlite", "curl", "commonmark"))'
 
       - name: Rodar o radar
         env:
@@ -25,4 +27,5 @@ jobs:
           GMAIL_USUARIO: ${{ secrets.GMAIL_USUARIO }}
           GMAIL_SENHA_APP: ${{ secrets.GMAIL_SENHA_APP }}
           ASSINANTES: ${{ secrets.ASSINANTES }}
+          NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}  # opcional
         run: Rscript radar.R
